@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/theusualdeveloper/task-api/handler"
@@ -44,11 +47,41 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 		Handler:      mux,
 	}
+	c := make(chan struct{})
+	go func(server *http.Server, logger *slog.Logger, c chan struct{}) {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err := server.Shutdown(ctx)
+		if err != nil {
+			logger.LogAttrs(
+				ctx,
+				slog.LevelError,
+				"Shutdown failed",
+				slog.String("err", "Server Shutdown failed"),
+			)
+		}
+		logger.LogAttrs(
+			ctx,
+			slog.LevelInfo,
+			"Shutdown Success",
+			slog.String("info", "Server is shutting down gracefully..."),
+		)
+		close(c)
+	}(&server, logger, c)
 	logger.Info("Server is starting on http://localhost:8080")
 	err := server.ListenAndServe()
 	if err != nil {
-		logger.Error(err.Error())
+		if err == http.ErrServerClosed {
+			logger.Info("Server shutting down successfully")
+		} else {
+			logger.Error(err.Error())
+			return
+		}
 	}
+	<-c
 }
 
 func InitSlog() *slog.Logger {
