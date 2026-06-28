@@ -1,6 +1,8 @@
 package store
 
-import "sync"
+import (
+	"sync"
+)
 
 type TaskStore struct {
 	l       sync.RWMutex
@@ -59,4 +61,23 @@ func (ts *TaskStore) Delete(id int) bool {
 	}
 	ts.tasks = filtered
 	return deleted
+}
+
+func (ts *TaskStore) Update(id int) (Task, bool) {
+	ts.l.Lock()
+	defer ts.l.Unlock()
+	var ti int
+	var found bool
+	for i, t := range ts.tasks {
+		if t.ID == id {
+			ti = i
+			found = true
+			break
+		}
+	}
+	if !found {
+		return Task{}, found
+	}
+	ts.tasks[ti].Done = true
+	return ts.tasks[ti], found
 }

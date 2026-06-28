@@ -25,6 +25,7 @@ func main() {
 	tasks.HandleFunc("GET /", h.GetListHandler)
 	tasks.HandleFunc("GET /{id}", h.GetByIDHandler)
 	tasks.HandleFunc("DELETE /{id}", h.DeleteHandler)
+	tasks.HandleFunc("PATCH /{id}", h.CompleteHandler)
 
 	mux := http.NewServeMux()
 	mux.Handle("/tasks/", middleware.SetJsonHeader(http.StripPrefix("/tasks", tasks)))

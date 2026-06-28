@@ -88,3 +88,22 @@ func (h *TaskHandler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *TaskHandler) CompleteHandler(w http.ResponseWriter, r *http.Request) {
+	validation := formvalidation.NewFormValidation(r)
+	id, ok := validation.ValidateID("id")
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	task, found := h.TaskStore.Update(id)
+	if !found {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(task)
+	if err != nil {
+		h.Logger.Error(err.Error())
+	}
+}

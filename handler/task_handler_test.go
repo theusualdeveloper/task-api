@@ -147,3 +147,52 @@ func TestDeleteHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestCompleteHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		title      string
+		id         int
+		wantStatus int
+	}{
+		{
+			name:       "Test 1",
+			title:      "test title 1",
+			id:         1,
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "Test 2",
+			title:      "test title 2",
+			id:         10,
+			wantStatus: http.StatusNotFound,
+		},
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := store.NewTaskStore()
+			h := handler.NewTaskHandler(
+				ts,
+				logger,
+			)
+			r := httptest.NewRequest(http.MethodPatch, "/", nil)
+			r.SetPathValue("id", strconv.Itoa(tt.id))
+			w := httptest.NewRecorder()
+			ts.Add(tt.title)
+			h.CompleteHandler(w, r)
+			res := w.Result()
+			var task store.Task
+			err := json.NewDecoder(res.Body).Decode(&task)
+			if err != nil {
+				t.Fatal("json decode failed")
+			}
+			if res.StatusCode != tt.wantStatus {
+				t.Fatalf("want status code: %d, got: %d", tt.wantStatus, res.StatusCode)
+			}
+			if tt.wantStatus == http.StatusOK && !task.Done {
+				t.Fatal("task must be done when status code is 200")
+			}
+		})
+	}
+}
