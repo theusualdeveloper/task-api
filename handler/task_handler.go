@@ -14,11 +14,11 @@ type CreateRequestDTO struct {
 }
 
 type TaskHandler struct {
-	*slog.Logger
-	*store.TaskStore
+	Logger    *slog.Logger
+	TaskStore store.TaskStorer
 }
 
-func NewTaskHandler(taskStore *store.TaskStore, logger *slog.Logger) *TaskHandler {
+func NewTaskHandler(taskStore store.TaskStorer, logger *slog.Logger) *TaskHandler {
 	return &TaskHandler{
 		Logger:    logger,
 		TaskStore: taskStore,

@@ -43,7 +43,7 @@ func TestCreateHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 			h := handler.NewTaskHandler(
-				store.NewTaskStore(),
+				handler.NewMockTaskStore(),
 				logger,
 			)
 			h.CreateHandler(w, r)
@@ -59,7 +59,7 @@ func TestGetListHandler(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/tasks", nil)
 	w := httptest.NewRecorder()
 	h := handler.NewTaskHandler(
-		store.NewTaskStore(),
+		handler.NewMockTaskStore(),
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	)
 	h.GetListHandler(w, r)
@@ -92,7 +92,7 @@ func TestGetByIDHandler(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := store.NewTaskStore()
+			ts := handler.NewMockTaskStore()
 			h := handler.NewTaskHandler(
 				ts,
 				logger,
@@ -133,7 +133,7 @@ func TestDeleteHandler(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := store.NewTaskStore()
+			ts := handler.NewMockTaskStore()
 			h := handler.NewTaskHandler(ts, logger)
 			r := httptest.NewRequest(http.MethodDelete, "/tasks/", nil)
 			r.SetPathValue("id", strconv.Itoa(tt.wantId))
@@ -171,7 +171,7 @@ func TestCompleteHandler(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := store.NewTaskStore()
+			ts := handler.NewMockTaskStore()
 			h := handler.NewTaskHandler(
 				ts,
 				logger,
@@ -182,16 +182,18 @@ func TestCompleteHandler(t *testing.T) {
 			ts.Add(tt.title)
 			h.CompleteHandler(w, r)
 			res := w.Result()
-			var task store.Task
-			err := json.NewDecoder(res.Body).Decode(&task)
-			if err != nil {
-				t.Fatal("json decode failed")
-			}
 			if res.StatusCode != tt.wantStatus {
 				t.Fatalf("want status code: %d, got: %d", tt.wantStatus, res.StatusCode)
 			}
-			if tt.wantStatus == http.StatusOK && !task.Done {
-				t.Fatal("task must be done when status code is 200")
+			if tt.wantStatus == http.StatusOK {
+				var task store.Task
+				err := json.NewDecoder(res.Body).Decode(&task)
+				if err != nil {
+					t.Fatalf("json decode failed: %s", err.Error())
+				}
+				if !task.Done {
+					t.Fatal("task must be done when status code is 200")
+				}
 			}
 		})
 	}
